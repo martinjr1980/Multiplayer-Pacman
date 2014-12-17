@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang='en'>
+	<head>
+  	<meta charset='utf-8'>
+    <title>Pacman vs. Pacman</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+
+    	function Game() {
+    		this.info = { tile: 10, conv: 3 };
+
+            this.map = [];
+            this.coins = [];
+
+    		this.drawMap = function () {
+                var start = new Date().getTime();
+
+    			for (var i=0; i<this.map.length; i++){
+    				for (var j=0; j<this.map[i].length; j++){
+    					if (this.map[i][j] == 1 || this.map[i][j] == 9){
+    						$('#container').append("<div class='path'></div>");
+    					}
+    					else if (this.map[i][j] == 0){
+    						$('#container').append("<div class='brick'></div>");
+    					}
+    				}
+    			}
+                var end = new Date().getTime();
+                var time = end - start;
+                console.log('Execution time of drawMap: ' + time);
+    		}
+
+    		this.drawCoins = function () {
+                var start = new Date().getTime();
+                for (var i in this.coins) {
+                    $('#coins').append("<img id='" + this.coins[i].id + "' class='coin'" +
+                                "src='images/coin.jpg' style='top: " + this.coins[i].y + "px; left: " + this.coins[i].x + "px;'>");
+                }
+    			$("img[id='300-210']").replaceWith("<img id='300-210' class='power'" +
+    				"src='images/powerpellet.gif' style='top: 300px; left: 210px;'>");
+    			$("img[id='300-360']").replaceWith("<img id='300-360' class='power'" +
+    				"src='images/powerpellet.gif' style='top: 300px; left: 360px;'>");
+    			$("img[id='300-630']").replaceWith("<img id='300-630' class='power'" +
+    				"src='images/powerpellet.gif' style='top: 300px; left: 630px;'>");
+    			$("img[id='300-690']").replaceWith("<img id='300-690' class='power'" +
+    				"src='images/powerpellet.gif' style='top: 300px; left: 690px;'>");
+                $("img[id='300-840']").replaceWith("<img id='300-840' class='power'" +
+                    "src='images/powerpellet.gif' style='top: 300px; left: 840px;'>");
+
+                var end = new Date().getTime();
+                var time = end - start;
+                console.log('Execution time of drawCoins: ' + time);
+                         
+    		}
+
+    		this.timer = function(player_array, upPac, mainTime, sound, socket) {
+                document.getElementById('info').children[1].innerHTML = " | Time: " + this.info.time + " | ";
+    			if (this.info.time == 0){
+                    var winner=0;
+                    var name;
+                    for (var id in player_array) {
+                        if (player_array[id].info.score > winner) {
+                            winner = player_array[id].info.score;
+                            name = player_array[id].info.name;
+                        }
+                    }
+                    sound.start.pause();
+    				sound.end.play();
+    				clearInterval(upPac);
+    				clearInterval(mainTime);
+    				$('#end').append("<p id='loser'>" + name + " is the winner!</p>");
+                    
+    			}
+                this.info.time--;
+    		}
+    	}
+
+
+
+    	function Pacman (name, x, y, pos, id) {
+    		this.info = { name: name, x: x, y: y, pos: pos, pos_temp: pos, id: id, collision: false, power: false, score: 0 };
+    		
+    		this.draw = function () {
+    			$('#hero').append("<div id='" + this.info.id + "'><img class='pacman' src='images/pacman" + this.info.pos +
+    				".gif' style='top: " + this.info.y + "px; left: " + this.info.x + "px;'></div>");
+    		}
+
+    		this.update = function (player_array, game, myID, socket, sound) {
+                // This means that you are updating YOUR movement
+    			if (this.info.id == myID) {
+	    			this.detectCollision(game);
+					this.move(game);
+
+					var el = document.getElementById(this.info.id);
+					el.innerHTML = "<img class='pacman' src='images/pacman" + this.info.pos +
+	  			      ".gif' style='top: " + this.info.y + "px; left: " + this.info.x + "px;'>";
+
+					socket.emit('key_press', { info: this.info });
+                    this.updateCoins(player_array, game, myID, socket, sound);
+    			}
+
+                // This means you are updating another players movement
+    			else {
+		    		var that = this;
+		    		socket.on('new_movement', function (data) {
+                        that.info = data.info;
+
+                        var el = document.getElementById(data.info.id);
+                        el.innerHTML = "<img class='pacman' src='images/pacman" + data.info.pos +
+                            ".gif' style='top: " + data.info.y + "px; left: " + data.info.x + "px;'>";
+
+		    		})
+
+                    socket.on('update_coin', function (data) {
+                        $("#" + data.coin_id).remove();
+                    })
+
+                    socket.on('broadcast_score', function (data) {
+                        var score = '';
+                        score = player_array[myID].info.name + "'s Score: " + player_array[myID].info.score;
+                        player_array[data.id].info.score = data.score;
+                        for (var id in player_array) {
+                            if (player_array[id].info.id != player_array[myID].info.id) {
+                                score += " | " + player_array[id].info.name + "'s Score: " + player_array[id].info.score;
+                            }   
+                        }
+                        document.getElementById('info').children[2].innerHTML = score;
+                    })
+
+                    socket.on('game_over', function (data) {
+                        sound.end.play();
+                        clearInterval(upPac);
+                        clearInterval(mainTime);
+                        $('#end').append("<p id='loser'>You lose! " + data.name + " is the winner!</p>");
+                    })
+				}
+
+                socket.on('update_all_coins', function (data) {
+                    game.coins = data.coins;
+                })
+    		}
+
+    		this.detectCollision = function (game) {
+                var start = new Date().getTime();
+
+                var xLeft = Math.floor(( this.info.x - game.info.tile ) / game.info.tile / game.info.conv );
+                var xRight = Math.ceil(( this.info.x + game.info.tile ) / game.info.tile / game.info.conv );
+                var yUp = Math.floor(( this.info.y - game.info.tile ) / game.info.tile / game.info.conv );
+                var yDown = Math.ceil(( this.info.y + game.info.tile ) / game.info.tile / game.info.conv );
+
+                var xLeftUp = game.map[ yUp - 1 ][ xLeft ];
+                var xLeftDown = game.map[ yDown - 1 ][ xLeft ];
+                var xRightUp = game.map[ yUp - 1 ][ xRight ];
+                var xRightDown = game.map[ yDown - 1 ][ xRight ];
+                var yUpLeft = game.map[ yUp - 1 ][ xLeft ];
+                var yUpRight = game.map[ yUp - 1 ][ xRight ];
+                var yDownLeft = game.map[ yDown - 1 ][ xLeft ];
+                var yDownRight = game.map[ yDown - 1 ][ xRight ];
+
+
+                // Check for movement in left direction
+                if (this.info.pos_temp == 37 && xLeftUp == 0 && this.info.y/game.info.tile % game.info.conv > 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 37 && game.map[Math.round(this.info.y/game.info.tile/game.info.conv)-1][xLeft] == 0 && (this.info.y/game.info.tile) % game.info.conv == 0  ){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 37 && xLeftDown == 0 && this.info.y/game.info.tile % game.info.conv > 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 37 && game.map[Math.round(this.info.y/game.info.tile/game.info.conv)-1][xLeft] == undefined && (this.info.y/game.info.tile) % game.info.conv == 0 ){
+                    this.info.collision = undefined;
+                    this.info.pos = this.info.pos_temp;
+                }
+
+                // Check for movement in right direction
+                else if (this.info.pos_temp == 39 &&xRightUp == 0 && this.info.y/game.info.tile % game.info.conv > 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 39 &&game.map[Math.round(this.info.y/game.info.tile/game.info.conv)-1][xRight] == 0 && (this.info.y/game.info.tile) % game.info.conv == 0 ) {
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 39 &&xRightDown == 0 && this.info.y/game.info.tile % game.info.conv > 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 39 &&game.map[Math.round(this.info.y/game.info.tile/game.info.conv)-1][xRight] == undefined && (this.info.y/game.info.tile) % game.info.conv == 0){
+                    this.info.collision = undefined;
+                    this.info.pos = this.info.pos_temp;
+                }
+
+                // Check for movement in up direction
+                else if (this.info.pos_temp == 38 && yUpLeft == 0 && this.info.x/game.info.tile % game.info.conv > 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 38 && game.map[yUp-1][(this.info.x/game.info.tile/game.info.conv)] == 0 && this.info.x/game.info.tile % game.info.conv == 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 38 && yUpRight == 0 && this.info.x/game.info.tile % game.info.conv > 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+
+                // Check for movement in down direction
+                else if (this.info.pos_temp == 40 && yDownLeft == 0 && this.info.x/game.info.tile % game.info.conv > 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 40 && game.map[yDown-1][(this.info.x/game.info.tile/game.info.conv)] == 0 && this.info.x/game.info.tile % game.info.conv == 0 ){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+                else if (this.info.pos_temp == 40 && yDownRight == 0 && this.info.x/game.info.tile % game.info.conv > 0){
+                    this.info.collision = true;
+                    this.info.pos_temp = this.info.pos;
+                }
+
+                // If we get here, it means there is no collision!
+                else {
+                    this.info.collision = false;
+                    this.info.pos = this.info.pos_temp;
+                }
+
+                 var end = new Date().getTime();
+                var time = end - start;
+                console.log('Execution time of drawCoins: ' + time);
+    		}
+
+    		this.move = function (game) {
+    			if (this.info.collision == undefined){
+    				if (this.info.pos == 37){
+    					this.info.x = game.map[0].length * game.info.tile * game.info.conv - game.info.tile * game.info.conv;
+    				}
+    				else if (this.info.pos == 39) {
+    					this.info.x = 0;
+    				}
+    			}
+    			else if (this.info.collision != true){
+    				if (this.info.pos == 37){
+    					this.info.x -= game.info.tile;
+    				}
+    				else if (this.info.pos == 39){
+    					this.info.x += game.info.tile;
+    				}
+    				else if (this.info.pos == 38){
+    					this.info.y -= game.info.tile;
+    				}
+    				else if (this.info.pos == 40){
+    					this.info.y += game.info.tile;
+    				}
+    			}
+    		}
+
+    		this.updateCoins = function (player_array, game, myID, socket, sound) {
+
+                // Used X-Y coordinates to create custom ID for each coin that links with X-Y position of Pacman.
+                // This allows you to see if Pacman ate a coin without looping through the entire coin array.
+                var coin_id;
+                var el;
+                var score='';
+                for (var i=-1; i<2; i++) {
+                    for (var j=-1; j<2; j++) {
+                        coin_id = (this.info.y + i * game.info.tile).toString() + '-' + (this.info.x + j * game.info.tile).toString();
+                        if (document.getElementById(coin_id)) {
+                            el = document.getElementById(coin_id);
+
+                            if (coin_id == '300-210' || coin_id == '300-360' || coin_id == '300-630' || coin_id == '300-690' || coin_id == '300-840') {
+                                sound.power.play();
+                                this.info.score += 100;
+                            }
+                            else {
+                                sound.eat.play();
+                                this.info.score += 10;
+                            }
+                            
+                            socket.emit('eat_coin', { coin_id: coin_id });
+                            document.getElementById('coins').removeChild(el);
+                            score = "Jeremy's Score: " + this.info.score;
+
+                            for (var id in player_array) {
+                                if (player_array[id].info.id != this.info.id) {
+                                    score += " | " + player_array[id].info.name + "'s Score: " + player_array[id].info.score;
+                                }   
+                            }
+                            document.getElementById('info').children[2].innerHTML = score;
+                            socket.emit('update_score', { id: this.info.id, score: this.info.score });
+                            return;
+                        }
+                    }
+                }
+
+    			if (game.coins.length == 0){
+    				$('#end').append("<p id='winner'>YOU WIN!!!</p>");
+                    var winner=0;
+                    var name;
+                    for (var id in player_array) {
+                        if (player_array[id].info.score > winner) {
+                            winner = player_array[id].info.score;
+                            name = player_array[id].info.name;
+                        }
+                    }
+                    sound.start.pause();
+                    sound.end.play();
+                    clearInterval(upPac);
+                    clearInterval(mainTime);
+                    $('#end').append("<p id='winner'>You are the winner!</p>");
+                    socket.emit('winner', { name: name });
+    			}
+    		}
+
+    		this.draw();
+    	}
+
+    	function Players() {
+    		this.loop = function (player_array, game, myID, socket, sound) {
+    			for (var id in player_array) {
+    				player_array[id].update(player_array, game, myID, socket, sound);
+    			}
+    		}
+
+    		this.createNew= function (player_array, name, x, y, pos, id) {
+  				var pacman = new Pacman(name, x, y, pos, id);
+  				player_array[id] = pacman;
+  			}
+    	}
+
+    	function getDistance (x1, x2, y1, y2){
+    		return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+    	}
+
+    	$(document).ready(function() {
+
+    		var socket = io.connect();
+    		var name = prompt('Welcome! Please enter your name.');
+    		socket.emit('login', { name: name });
+
+    		var game = new Game();
+    		var players = new Players();
+    		var player_array = [];
+    		var myID;
+    		
+            var sound = {};
+            sound.start = new Audio('sounds/pacman_start.mp3');
+            sound.eat = new Audio('sounds/pacman_chomp.wav');
+            sound.power = new Audio('sounds/pacman_eatghost.wav')
+            sound.die = new Audio('sounds/pacman_death.wav');
+            sound.end = new Audio('sounds/pacman_intermission.wav')
+    		
+    		var upPac;
+    		var mainTime;
+    	
+    		socket.on('current_user', function (data) {
+                sound.start.play();
+                players.createNew(player_array, data.name, data.info.x, data.info.y, data.info.pos, data.info.id);
+    			myID = data.info.id;
+                game.map = data.map;
+                game.coins = data.coins;
+                game.info.time = data.time;
+                game.drawMap();
+                game.drawCoins();
+                
+    			upPac = setInterval(mainLoop, 100);
+    			mainTime = setInterval(timeLoop, 1000);
+    		})
+
+    		socket.on('all_users', function (data) {
+    			for (var id in data.users) {
+    				var user = data.users[id].info;
+    				players.createNew(player_array, user.name, user.x, user.y, user.pos, id);
+    			}
+    		})
+
+    		socket.on('new_user', function (data) {
+    			players.createNew(player_array, data.info.name, data.info.x, data.info.y, data.info.pos, data.info.id);
+    		})
+
+    		socket.on('remove_user', function (remove_user) {
+    		    document.getElementById(remove_user.id).remove();
+    		})
+
+    		document.onkeydown = function (e) {
+    			if (e.keyCode >= 37 && e.keyCode <= 40) {
+    				player_array[myID].info.pos_temp = e.keyCode;
+    				player_array[myID].update(player_array, game, myID, socket, sound);
+    			}
+    		}
+
+    		function mainLoop() {
+    			players.loop(player_array, game, myID, socket, sound);
+    		}
+
+    		function timeLoop() {
+    			game.timer(player_array, upPac, mainTime, sound, socket);
+    		}
+
+    	});
+    </script>
+	</head>
+	<body>
+  	<div id='info'>
+  		<h1 class='yellow'>Pacman vs. Pacman</h1>
+  		<h2 class='time'> | Time: </h2>
+  		<h2 class='score'></h2>
+  	</div>
+  	<div id='container'></div>
+  	<div id='coins'></div>
+  	<div id='hero'></div>
+  	<div id='enemy'></div>
+  	<div id='end'></div>
+	</body>
+</html>

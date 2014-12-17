@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang='en'>
+	<head>
+  	<meta charset='utf-8'>
+    <title>Pacman vs. Ghosts</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+
+    	function Game() {
+    		this.info = { tile: 10, conv: 3, time: 99 };
+
+    		this.coins = [];
+
+    		this.map = [
+    				[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,0,1,0,0,1,0,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0],
+    				[1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,0,1,0,0,1,0,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    				[0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,0,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,0,0,0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    				[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    		];
+
+    		this.drawMap = function() {
+    			for (var i=0; i<this.map.length; i++){
+    				for (var j=0; j<this.map[i].length; j++){
+    					if (this.map[i][j] == 1 || this.map[i][j] == 9){
+    						$('#container').append("<div class='path'></div>");
+    					}
+    					else if (this.map[i][j] == 0){
+    						$('#container').append("<div class='brick'></div>");
+    					}
+    				}
+    			}
+    		}
+
+    		this.drawCoins = function() {
+    			var id = 1;
+    			for (var i=0; i<(this.map.length); i++){
+    				for (var j=0; j<(this.map[i].length); j++){
+    					if (this.map[i][j] == 1){
+    						var posY = i*30+42;
+    						var posX = j*30+12;
+    						$('#coins').append("<img id='" + id + "' class='coin'" +
+    							"src='images/coin.jpg' style='top: " + posY + "px; left: " + posX + "px;'>");
+    						this.coins.push({id: id, x: posX, y: posY});
+    						id++;
+    					}
+    				}
+    			}
+
+    			// $("img[id='23']").replaceWith("<img id='23' class='power'" +
+    			// 	"src='images/powerpellet.gif' style='top: 120px; left: 30px;'>");
+    			// $("img[id='28']").replaceWith("<img id='28' class='power'" +
+    			// 	"src='images/powerpellet.gif' style='top: 120px; left: 510px;'>");
+    			// $("img[id='140']").replaceWith("<img id='140' class='power'" +
+    			// 	"src='images/powerpellet.gif' style='top: 510px; left: 30px;'>");
+    			// $("img[id='154']").replaceWith("<img id='154' class='power'" +
+    			// 	"src='images/powerpellet.gif' style='top: 510px; left: 510px;'>");
+    		}
+
+    		this.timer = function(sound, upPac, mainTime) {
+    			this.info.time--;
+    			document.getElementById('info').children[1].innerHTML = "Time: " + this.info.time;
+    			if (this.info.time == 0){
+    				sound.play();
+    				clearInterval(upPac);
+    				clearInterval(mainTime);
+    				$('#end').append("<p id='loser'>GAME OVER</p>");
+    				console.log(this.info.time);
+    			}
+    		}
+    	}
+
+
+
+    	function Pacman (x, y, pos, id) {
+    		this.info = { x: x, y: y, pos: pos, id: id, collision: false, power: false, score: 0 };
+    		
+    		this.draw = function () {
+    			$('#hero').append("<div id='" + this.info.id + "'><img class='pacman' src='images/pacman" + this.info.pos +
+    				".gif' style='top: " + this.info.y + "px; left: " + this.info.x + "px;'></div>");
+    		}
+
+    		this.update = function (game, myID, socket) {
+    			if (this.info.id == myID) {
+	    			this.detectCollision(game);
+						this.move(game);
+
+						var el = document.getElementById(this.info.id);
+						el.innerHTML = "<img class='pacman' src='images/pacman" + this.info.pos +
+		  				".gif' style='top: " + this.info.y + "px; left: " + this.info.x + "px;'>";
+
+						this.updateCoins(game, myID);
+		  			// Need to update life somewhere
+
+		  			socket.emit('key_press', { info: this.info });
+    			}
+    			else {
+		    		var that = this;
+		    		socket.on('new_movement', function (data) {
+		    			that.info = data.info;
+
+		    			var el = document.getElementById(data.info.id);
+							el.innerHTML = "<img class='pacman' src='images/pacman" + data.info.pos +
+			  				".gif' style='top: " + data.info.y + "px; left: " + data.info.x + "px;'>";
+
+			  			that.updateCoins(game, myID);
+		    		})
+					}
+    		}
+
+    		this.detectCollision = function (game) {
+                var xLeft = Matjh.floor((this.info.x - game.info.tile)/game.info.tile/game.info.conv);
+
+
+    			var xLeft = game.map[ this.info.y / game.info.tile - 1 ][ this.info.x / game.info.tile - 1 ];
+    			var xRight = game.map[ this.info.y / game.info.tile - 1 ][ this.info.x / game.info.tile + 1 ];
+    			var yUp = game.map[ this.info.y / game.info.tile - 2 ][ this.info.x / game.info.tile ];
+    			var yDown = game.map[ this.info.y / game.info.tile ][ this.info.x / game.info.tile ];
+
+    			if (this.info.pos == 37 && xLeft == 0) {
+    				this.info.collision = true;
+    			}
+    			else if (this.info.pos == 37 && xLeft == undefined) {
+    				this.info.collision = undefined;
+    			}
+    			else if (this.info.pos == 39 && xRight == 0){
+    				this.info.collision = true;
+    			}
+    			else if (this.info.pos == 39 && xRight == undefined) {
+    				this.info.collision = undefined;
+    			}
+    			else if (this.info.pos == 38 && yUp == 0) {
+    				this.info.collision = true;
+    			}
+    			else if (this.info.pos == 40 && yDown == 0){
+    				this.info.collision = true;
+    			}
+    			else {
+    				this.info.collision = false;
+    			}
+    		}
+
+    		this.move = function (game) {
+    			if (this.info.collision == undefined){
+    				if (this.info.pos == 37){
+    					this.info.x = game.map[0].length * game.info.tile - game.info.tile;
+    				}
+    				else if (this.info.pos == 39) {
+    					this.info.x = 0;
+    				}
+    				// else if (this.info.pos == 38) {
+    				// 	this.info.y = game.map.length * game.info.tile;
+    				// }
+    				// else if (this.info.pos == 40) {
+    				// 	this.info.y = game.info.tile;
+    				// }
+    			}
+    			else if (this.info.collision != true){
+    				if (this.info.pos == 37){
+    					this.info.x -= game.info.tile;
+    				}
+    				else if (this.info.pos == 39){
+    					this.info.x += game.info.tile;
+    				}
+    				else if (this.info.pos == 38){
+    					this.info.y -= game.info.tile;
+    				}
+    				else if (this.info.pos == 40){
+    					this.info.y += game.info.tile;
+    				}
+    			}
+    		}
+
+    		this.updateCoins = function (game, myID) {
+    			for (var i in game.coins){
+    				var delta = getDistance(this.info.x+15, game.coins[i].x, this.info.y+15, game.coins[i].y);
+    				if (delta <= 6){
+    					var el = document.getElementById(game.coins[i].id);
+    					game.coins.splice(i, 1);
+    					document.getElementById('coins').removeChild(el);
+    					if (this.info.id == myID) {
+    						this.info.score += 10;
+    						document.getElementById('info').children[2].innerHTML = "Score: " + this.info.score;
+    					}
+    				}
+    			}
+    			if (game.coins.length == 0){
+    				// clearInterval(upPac);
+    				$('#end').append("<p id='winner'>YOU WIN!!!</p>");
+    				// clearInterval(mainTime);
+    				// timeBonus = setInterval(timeBonus, 30);
+    			}
+    		}
+
+    		this.draw();
+    	}
+
+    	function Players() {
+    		this.loop = function (player_array, game, myID, socket) {
+    			for (var id in player_array) {
+    				player_array[id].update(game, myID, socket);
+    			}
+    		}
+
+    		this.createNew= function (player_array, x, y, pos, id) {
+  				var pacman = new Pacman(x, y, pos, id);
+  				player_array[id] = pacman;
+  			}
+    	}
+
+    	function getDistance (x1, x2, y1, y2){
+    		return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+    	}
+
+    	$(document).ready(function() {
+    		var socket = io.connect('http://10.0.1.138');
+    		var name = prompt('Welcome! Please enter your name.');
+    		var choice = prompt('Do you want to be Pacman or a Ghost?');
+    		socket.emit('login', { name: name, choice: choice });
+
+    		var game = new Game();
+    		var players = new Players();
+    		var player_array = [];
+    		var myID;
+    		
+    		var sound2 = new Audio('sounds/pacman_death.wav');
+    		var upPac;
+    		var mainTime;
+    	
+    		game.drawMap();
+    		game.drawCoins();
+
+    		socket.on('current_user', function (data) {
+    			players.createNew(player_array, data.info.x, data.info.y, data.info.pos, data.info.id);
+    			myID = data.info.id;
+    			upPac = setInterval(mainLoop, 250);
+    			mainTime = setInterval(timeLoop, 1000);
+    		})
+
+    		socket.on('all_users', function (data) {
+    			for (var id in data.users) {
+    				var user = data.users[id].info;
+    				players.createNew(player_array, user.x, user.y, user.pos, id);
+    			}
+    		})
+
+    		socket.on('new_user', function (data) {
+    			players.createNew(player_array, data.info.x, data.info.y, data.info.pos, data.info.id);
+    		})
+
+    		socket.on('remove_user', function (remove_user) {
+    		    document.getElementById(remove_user.id).remove();
+    		})
+
+    		document.onkeydown = function (e) {
+    			if (e.keyCode >= 37 && e.keyCode <= 40) {
+    				player_array[myID].info.pos = e.keyCode;
+    				player_array[myID].update(game, myID, socket);
+    			}
+    		}
+
+    		function mainLoop() {
+    			players.loop(player_array, game, myID, socket);
+    		}
+
+    		function timeLoop() {
+    			game.timer(sound2, upPac, mainTime);
+    		}
+
+    	});
+    </script>
+	</head>
+	<body>
+  	<div id='info'>
+  		<h1 class='yellow'>PACMAN LITE</h1>
+  		<h2 class='time'>Time: 99</h2>
+  		<h2 class='score'>Score: 0</h2>
+  	</div>
+  	<div id='container'></div>
+  	<div id='coins'></div>
+  	<div id='hero'></div>
+  	<div id='enemy'></div>
+  	<div id='end'></div>
+  	<!-- <div id='start'><button class='start'>Click to Start</button></div> -->
+	</body>
+</html>

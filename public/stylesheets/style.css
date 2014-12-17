@@ -1,0 +1,113 @@
+* {
+	margin: 0px;
+	padding: 0px;
+	font-family: verdana;
+}
+
+body {
+	background-color: black;
+}
+
+#container {
+	height: auto; width: 1200px;
+}
+
+#info {
+	height: 30px; width: 1200px;
+	position: relative;
+	color: white;
+}
+
+h1 {
+	display: inline-block; vertical-align: center;
+	width: 300px;
+	font-size: 25px;
+}
+
+h2.time {
+	display: inline-block; vertical-align: center;
+	width: 175px;
+	font-size: 25px;
+	text-align: left;
+}
+
+h2.score {
+	display: inline-block; vertical-align: center;
+	text-align: left;
+	width: 600px;
+}
+
+.yellow {
+	color: yellow;
+}
+
+.start {
+	background-color: yellow;
+	height: 80px; width: 200px;
+	position: absolute;
+	top: 250px; left:185px;
+	border: 3px solid black;
+	border-radius: 10px;
+	font-size: 30px;
+	font-weight: 800;
+	color: black
+}
+
+.brick {
+	height: 26px; width: 26px;
+	position: relative; float: left;
+	margin: 1px;
+	text-align: right;
+	background-color: blue;
+	border: 1px solid yellow;
+	border-radius: 5px;
+}
+
+.path {
+	height: 30px; width: 30px;
+	position: relative; float: left;
+	background-color: black;
+}
+
+.coin {
+	height: 8px; width: 8px;
+	position: absolute;
+}
+
+.power {
+	height: 30px; width: 30px;
+	position: absolute;
+}
+
+.pacman {
+	height: 30px; width: 30px;
+	position: absolute;
+	color: white;
+}
+
+.ghost {
+	height: 30px; width: 30px;
+	position: absolute;
+}
+
+#loser {
+	position: absolute;
+	top: 150px; left: 185px;
+	width: 800px;
+	font-size: 100px;
+	color: red;
+	text-align: center;
+}
+
+#winner {
+	position: absolute;
+	top: 150px; left: 185px;
+	width: 800px;
+	font-size: 100px;
+	color: green;
+	text-align: center;
+}
+
+.text {
+	color: red;
+}
